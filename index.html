@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GMGN关注转换成Axiom</title>
+  <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    window.onload = () => {
+      const App = () => {
+        const [inputJson, setInputJson] = React.useState('');
+        const [transformedData, setTransformedData] = React.useState([]);
+        const [error, setError] = React.useState('');
+        const [copied, setCopied] = React.useState(false);
+
+        const transformData = (sourceData) => {
+          return sourceData.data.followings.map((item) => ({
+            trackedWalletAddress: item.address || '',
+            name: item.name || '',
+            emoji: '',
+            alertsOn: item.tg_alert_enabled ?? false,
+          }));
+        };
+        const handleCopy = () => {
+          if (transformedData.length === 0) {
+            setError('No data to copy');
+            return;
+          }
+
+          const textToCopy = JSON.stringify(transformedData, null, 2);
+
+          // Try modern Clipboard API
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(textToCopy)
+              .then(() => {
+                setCopied(true);
+                setError('');
+                setTimeout(() => setCopied(false), 2000);
+              })
+              .catch((err) => {
+                console.error('Clipboard API failed:', err);
+                // Fallback to textarea method
+                fallbackCopyText(textToCopy);
+              });
+          } else {
+            // Fallback for older browsers or non-secure contexts
+            fallbackCopyText(textToCopy);
+          }
+        };
+
+        const fallbackCopyText = (text) => {
+          try {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            setCopied(true);
+            setError('');
+            setTimeout(() => setCopied(false), 2000);
+          } catch (err) {
+            setError('Failed to copy: ' + err.message);
+          }
+        };
+      
+        const handleTransform = () => {
+          try {
+            const parsedData = JSON.parse(inputJson);
+            const result = transformData(parsedData);
+            setTransformedData(result);
+            setError('');
+          } catch (e) {
+            setError('格式错误，按上面的教程操作');
+            setTransformedData([]);
+          }
+        };
+
+        return (
+          <div className="bg-gray-100 p-6">
+            <div className="mx-auto bg-white rounded-lg shadow-lg p-6">
+              <h1 className="text-2xl font-bold mb-4 text-center">1. 打开GMGN, <span className="text-red-500">先按F12</span>，点击Network, 再点击关注，如图搜索following_wallets, 点击preview, 右键下面第一行copy object</h1>
+              <div className="mb-4">
+                <img
+                  src="./example.jpg"
+                  alt="example"
+                  className="w-auto h-auto"
+                />
+              </div>
+              <div className="mb-4">
+                <br/>
+                <h1 className="text-2xl font-bold mb-4 text-center">2. 在下面粘贴数据后点击转换</h1>
+                <textarea
+                  className="w-full h-40 p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder='在这里粘贴'
+                  value={inputJson}
+                  onChange={(e) => setInputJson(e.target.value)}
+                ></textarea>
+              </div>
+              <div className="mb-4 text-center">
+                <button
+                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onClick={handleTransform}
+                >
+                  转换
+                </button>
+              </div>
+              {error && <div className="mb-4 text-red-500 text-center">{error}</div>}
+              {transformedData.length > 0 && (
+                <div className="mb-4">
+                  <br/>
+                  <h1 className="text-2xl font-bold mb-4 text-center">3. 复制结果去axiom导入即可</h1>
+                  <textarea
+                    className="w-full h-40 p-2 border rounded-md bg-gray-50 font-mono text-sm"
+                    value={JSON.stringify(transformedData, null, 2)}
+                    readOnly
+                  ></textarea>
+                  <div className="mt-2 text-center">
+                    <button
+                      className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500"
+                      onClick={handleCopy}
+                    >
+                      复制结果
+                    </button>
+                    {copied && (
+                      <span className="ml-2 text-green-600">已复制!</span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      };
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+
+      root.render(<App />);
+    }
+  </script>
+</body>
+</html>
